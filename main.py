@@ -17,16 +17,16 @@ class CollegeAlarm:
         self.login(username, password)
 
         # Find Courses
-        self.courses_code = []
-        self.get_courses()
+        
+        course_codes, course_names = self.get_courses()
 
         
         # Getting assignments
         assignments = {}
-        for course in self.courses_code[ -1 : 5 : -1]:
+        for course in course_codes:
             assignments[course] = self.get_assignments(course)
+            
         
-        self.driver.quit()
         
         print(assignments)
 
@@ -38,14 +38,18 @@ class CollegeAlarm:
     def get_courses(self):
         self.driver.get(self.base_url + 'courses')
         courses = self.driver.find_elements_by_tag_name('h3')
-        self.courses_code = [course.text.split(':')[0].lower() for course in courses]
+        courses = [course.text.split(':') for course in courses]
+        return [course[0].strip().lower() for course in courses], [course[1].strip() for course in courses]
 
     def get_assignments(self, course):
         self.driver.get(self.base_url + course + '/#/home')
+        self.driver.implicitly_wait(10)
         class_name = 'assignmentItemNotSubmitted'
-        ignored_exceptions = (NoSuchElementException, StaleElementReferenceException)
-        assignments_elem = WebDriverWait(self.driver, 5, ignored_exceptions=ignored_exceptions)\
-                                .until(expected_conditions.presence_of_all_elements_located((By.CLASS_NAME, class_name)))
+        assignments_elem = self.driver.find_elements_by_class_name(class_name)
+        if not len(assignments_elem): return []
+        else:
+            for assignment in assignments_elem: print(assignment.text)
+            return []
         assignments = []
         for assignment in assignments_elem:
             type_, date = assignment.text.split('\n')
@@ -54,6 +58,7 @@ class CollegeAlarm:
             if dt.today() + td(7) > date > dt.today():
                 assignments.append(type_)
         assignments_elem = None
+
         return assignments
 
 
